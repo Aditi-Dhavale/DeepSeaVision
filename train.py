@@ -7,11 +7,11 @@ from model import GeneratorUSRGAN, Discriminator
 from dataloader import train_loader
 import os
 
-# Set CUDA optimizations
+# ✅ Set CUDA optimizations
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"\n🚀 Training on: {device}")
 
-# Improved Perceptual Loss (Fixed Normalization)
+# ✅ Improved Perceptual Loss (Fixed Normalization)
 class PerceptualLoss(nn.Module):
     def __init__(self, weight_path="/kaggle/input/vgg19-weights/vgg19-dcbb9e9d.pth"):
         super(PerceptualLoss, self).__init__()
@@ -30,7 +30,7 @@ class PerceptualLoss(nn.Module):
         y = self.normalize(y)
         return torch.nn.functional.mse_loss(self.vgg(x), self.vgg(y))
 
-# Train Function
+# ✅ Train Function
 def train():
     generator = GeneratorUSRGAN().to(device)
     discriminator = Discriminator().to(device)
@@ -42,7 +42,7 @@ def train():
     optimizer_g = optim.Adam(generator.parameters(), lr=1e-4, betas=(0.5, 0.999))
     optimizer_d = optim.Adam(discriminator.parameters(), lr=1e-4, betas=(0.5, 0.999))
 
-    # Learning Rate Scheduler
+    # ✅ Learning Rate Scheduler
     scheduler_g = optim.lr_scheduler.StepLR(optimizer_g, step_size=10, gamma=0.5)
     scheduler_d = optim.lr_scheduler.StepLR(optimizer_d, step_size=10, gamma=0.5)
 
@@ -56,13 +56,13 @@ def train():
     best_g_loss = float("inf")
 
     for epoch in range(num_epochs):
-        torch.cuda.empty_cache()  # Prevents memory fragmentation
+        torch.cuda.empty_cache()  # ✅ Prevents memory fragmentation
         epoch_g_loss, epoch_d_loss = 0.0, 0.0
 
         for batch_idx, (low_res, high_res) in enumerate(train_loader):
             low_res, high_res = low_res.to(device), high_res.to(device)
 
-            # Generator Training (Use AMP)
+            # ✅ Generator Training (Use  Automatic Mixed Precision (AMP)) - reduce memory usage
             optimizer_g.zero_grad()
             with torch.amp.autocast(device_type="cuda", dtype=torch.float16):
                 fake_high_res = generator(low_res)
@@ -82,7 +82,7 @@ def train():
 
             epoch_g_loss += g_loss.item()
 
-            # Discriminator Training (With AMP Scaling)
+            # ✅ Discriminator Training (With AMP Scaling)
             optimizer_d.zero_grad()
             with torch.amp.autocast(device_type="cuda", dtype=torch.float16):
                 real_pred = discriminator(high_res)
@@ -98,18 +98,18 @@ def train():
 
             epoch_d_loss += d_loss.item()
 
-        # Update Learning Rate Schedulers
+        # ✅ Update Learning Rate Schedulers
         scheduler_g.step()
         scheduler_d.step()
 
-        print(f"Epoch {epoch+1} | G Loss: {epoch_g_loss:.4f} | D Loss: {epoch_d_loss:.4f} | LR: {scheduler_g.get_last_lr()[0]:.6f}")
+        print(f"✅ Epoch {epoch+1} | G Loss: {epoch_g_loss:.4f} | D Loss: {epoch_d_loss:.4f} | LR: {scheduler_g.get_last_lr()[0]:.6f}")
         
-        # Save Only the Best Model
+        # ✅ Save Only the Best Model
         if epoch_g_loss < best_g_loss:
             best_g_loss = epoch_g_loss
             torch.save(generator.state_dict(), f"{save_dir}/best_generator.pth")
             torch.save(discriminator.state_dict(), f"{save_dir}/best_discriminator.pth")
-            print(f" Best model saved at epoch {epoch+1}!")
+            print(f"💾 Best model saved at epoch {epoch+1}!")
 
 if __name__ == "__main__":
     train()
